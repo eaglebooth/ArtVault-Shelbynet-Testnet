@@ -65,7 +65,8 @@ function WalletList({ onConnect }: { onConnect: () => void }) {
     let cancelled = false;
     (async () => {
       try {
-        const { getWallets, getNotDetectedWallets } = await import("@aptos-labs/wallet-adapter-react");
+        const walletMod = await import("@aptos-labs/wallet-adapter-react") as any;
+    const { getWallets, getNotDetectedWallets } = walletMod;
         const w = getWallets();
         const n = getNotDetectedWallets();
         if (!cancelled) {
