@@ -4,8 +4,13 @@ import { listAssets, saveAsset, deleteAsset } from "@/lib/assets-store";
 export const runtime = "nodejs";
 
 export async function GET() {
-  const assets = listAssets();
-  return NextResponse.json({ assets });
+  try {
+    const assets = await listAssets();
+    return NextResponse.json({ assets });
+  } catch (err) {
+    console.error("[/api/assets GET] error:", err);
+    return NextResponse.json({ assets: [] });
+  }
 }
 
 export async function POST(request: Request) {
@@ -18,7 +23,7 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    const asset = saveAsset({ imageUrl, prompt, model });
+    const asset = await saveAsset({ imageUrl, prompt, model });
     return NextResponse.json({ asset });
   } catch (error) {
     console.error("[/api/assets] error:", error);
@@ -36,7 +41,7 @@ export async function DELETE(request: Request) {
     if (!id) {
       return NextResponse.json({ error: "id query param is required" }, { status: 400 });
     }
-    const ok = deleteAsset(id);
+    const ok = await deleteAsset(id);
     return NextResponse.json({ ok });
   } catch (error) {
     console.error("[/api/assets DELETE] error:", error);
