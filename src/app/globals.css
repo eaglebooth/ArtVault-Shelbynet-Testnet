@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-shelby-pink: #ff2d78;
+  --color-shelby-pink-hover: #e02568;
+  --color-shelby-pink-soft: #fff0f4;
+  --color-shelby-coral: #ff6b6b;
+  --color-shelby-lavender: #c084fc;
+  --color-shelby-dark: #0f0f1a;
+  --color-shelby-surface: #1a1a2e;
+  --color-shelby-muted: #8b8ba7;
+  --color-shelby-border: #3a3a55;
+  --color-shelby-bg: #f5f5fa;
+  --color-shelby-white: #ffffff;
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", monospace;
+  --animate-pulse-pink: pulse-pink 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-float: float 3s ease-in-out infinite;
+}
+
+@keyframes pulse-pink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+body {
+  background: var(--color-shelby-bg);
+  color: var(--color-shelby-dark);
+  font-family: var(--font-sans);
+}
+
+::selection {
+  background: var(--color-shelby-pink);
+  color: white;
+}
