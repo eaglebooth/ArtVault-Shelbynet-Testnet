@@ -79,53 +79,33 @@ export async function saveAsset(input: {
     createdAt: new Date().toISOString(),
   };
 
-  if (!USE_BLOB) {
-    try {
-      const cur = localRead();
-      cur.unshift(asset);
-      localWrite(cur);
-    } catch (err) {
-      console.error("[assets-store] local write failed:", err);
-    }
-    return asset;
-  }
-
-  (async () => {
-    try {
-      const cur = await blobRead();
-      cur.unshift(asset);
+  try {
+    const cur = USE_BLOB ? await blobRead() : localRead();
+    cur.unshift(asset);
+    if (USE_BLOB) {
       await blobWrite(cur);
-    } catch (err) {
-      console.error("[assets-store] blob write failed:", err);
+    } else {
+      localWrite(cur);
     }
-  })();
-
+  } catch (err) {
+    console.error("[assets-store] save failed:", err);
+  }
   return asset;
 }
 
 export async function deleteAsset(id: string): Promise<boolean> {
-  if (!USE_BLOB) {
-    try {
-      const cur = localRead();
-      const next = cur.filter((a) => a.id !== id);
-      if (next.length === cur.length) return false;
-      localWrite(next);
-      return true;
-    } catch (err) {
-      console.error("[assets-store] local delete failed:", err);
-      return false;
-    }
-  }
-
-  (async () => {
-    try {
-      const cur = await blobRead();
-      const next = cur.filter((a) => a.id !== id);
+  try {
+    const cur = USE_BLOB ? await blobRead() : localRead();
+    const next = cur.filter((a) => a.id !== id);
+    if (next.length === cur.length) return false;
+    if (USE_BLOB) {
       await blobWrite(next);
-    } catch (err) {
-      console.error("[assets-store] blob delete failed:", err);
+    } else {
+      localWrite(next);
     }
-  })();
-
-  return true;
+    return true;
+  } catch (err) {
+    console.error("[assets-store] delete failed:", err);
+    return false;
+  }
 }
