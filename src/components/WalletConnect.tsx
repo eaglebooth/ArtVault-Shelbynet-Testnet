@@ -186,7 +186,7 @@ export function WalletButton() {
         Connect Wallet
       </button>
       {showModal && (
-        <WalletModal wallets={wallets ?? []} onClose={() => setShowModal(false)} onConnect={(name) => {
+        <WalletModal wallets={(wallets ?? []) as any[]} onClose={() => setShowModal(false)} onConnect={(name) => {
           if (typeof connect === "function") connect(name);
           else console.warn("[Wallet] connect not available for:", name);
         }} />
