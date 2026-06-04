@@ -91,8 +91,9 @@ export async function saveAsset(input: {
     } else {
       localWrite(cur);
     }
-  } catch (err) {
+  } catch (err: any) {
     console.error("[assets-store] save failed:", err);
+    console.error("[assets-store] save failed detail:", err?.message, err?.stack);
   }
   return asset;
 }
