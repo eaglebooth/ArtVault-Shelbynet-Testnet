@@ -32,7 +32,7 @@ export function saveAsset(input: {
   imageUrl: string;
   prompt: string;
   model: string;
-}): Asset {
+}): Asset | null {
   ensureStore();
   const asset: Asset = {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -41,9 +41,16 @@ export function saveAsset(input: {
     model: input.model,
     createdAt: new Date().toISOString(),
   };
-  const current = listAssets();
-  current.unshift(asset);
-  fs.writeFileSync(ASSETS_FILE, JSON.stringify(current, null, 2));
+  try {
+    const current = listAssets();
+    current.unshift(asset);
+    fs.writeFileSync(ASSETS_FILE, JSON.stringify(current, null, 2));
+  } catch (err) {
+    // On serverless / read-only filesystems (e.g. Vercel), persistence
+    // is not guaranteed. The asset is still considered "saved" because
+    // it lives on Shelby Protocol; local JSON is only a cache.
+    console.error("[assets-store] write failed:", err);
+  }
   return asset;
 }
 
