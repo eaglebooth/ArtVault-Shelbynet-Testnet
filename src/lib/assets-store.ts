@@ -56,11 +56,12 @@ async function blobRead(): Promise<Asset[]> {
 
 async function blobWrite(items: Asset[]) {
   const { put } = await import("@vercel/blob");
-  const result = await put("assets.json", JSON.stringify(items, null, 2), {
+  await put("assets.json", JSON.stringify(items, null, 2), {
     access: "public",
     contentType: "application/json",
+    allowOverwrite: true,
   });
-  console.log("[assets-store] blobWrite stored, url:", result.url, "size:", JSON.stringify(items, null, 2).length);
+  console.log("[assets-store] blobWrite stored, url:", (await blobRead()).length, "assets");
 }
 
 export async function listAssets(): Promise<Asset[]> {
