@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 type Asset = {
   id: string;
@@ -21,6 +22,7 @@ const MODEL_LABELS: Record<string, string> = {
 };
 
 export default function GalleryPage() {
+  const pathname = usePathname();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [filter, setFilter] = useState<string>("all");
   const [selected, setSelected] = useState<Asset | null>(null);
@@ -61,7 +63,7 @@ export default function GalleryPage() {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [refreshAssets]);
+  }, [refreshAssets, pathname]);
 
   const handleDelete = useCallback(
     async (id?: string) => {
