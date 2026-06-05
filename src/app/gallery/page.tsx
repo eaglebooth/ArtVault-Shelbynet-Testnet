@@ -67,20 +67,26 @@ export default function GalleryPage() {
     async (id?: string) => {
       if (!id) return;
       if (!confirm("Delete this asset from the gallery?")) return;
-      const prev = assets;
+      setAssets((cur) => cur.filter((a) => a.id !== id));
       setSelected(null);
       try {
         const res = await fetch(`/api/assets?id=${encodeURIComponent(id)}`, {
           method: "DELETE",
           cache: "no-store",
+          next: { revalidate: 0 },
         });
-        if (!res.ok) throw new Error("Delete failed");
-        await refreshAssets();
-      } catch {
-        setAssets(prev);
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error ?? "Delete failed");
+        }
+      } catch (e) {
+        console.error("delete failed:", e);
+        alert(
+          e instanceof Error ? e.message : "Delete failed, please refresh the page"
+        );
       }
     },
-    [assets, refreshAssets]
+    []
   );
 
   const handleDownload = useCallback(async () => {
