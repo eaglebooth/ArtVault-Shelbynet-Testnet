@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 
 type Asset = {
@@ -10,8 +10,6 @@ type Asset = {
   model: string;
   createdAt: string;
 };
-
-
 
 const MODEL_LABELS: Record<string, string> = {
   ideogram: "Ideogram",
@@ -27,9 +25,44 @@ export default function GalleryPage() {
   const [filter, setFilter] = useState<string>("all");
   const [selected, setSelected] = useState<Asset | null>(null);
   const [loading, setLoading] = useState(true);
+  const refreshing = useRef(false);
 
   const modelLabel = (m: string) => MODEL_LABELS[m] ?? m;
-  const handleDelete = useCallback(async (id?: string) => {
+
+  const refreshAssets = useCallback(async () => {
+    if (refreshing.current) return;
+    refreshing.current = true;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/assets", { cache: "no-store" });
+      const data = await res.json();
+      if (!cancelledRef.current)
+        setAssets(Array.isArray(data.assets) ? data.assets : []);
+    } catch {
+      if (!cancelledRef.current) setAssets([]);
+    } finally {
+      refreshing.current = false;
+      if (!cancelledRef.current) setLoading(false);
+    }
+  }, []);
+
+  const cancelledRef = useRef(false);
+
+  useEffect(() => {
+    cancelledRef.current = false;
+    refreshAssets();
+    const onFocus = () => refreshAssets();
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refreshAssets();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      cancelledRef.current = true;
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [refreshAssets]);
     if (!id) return;
     if (!confirm("Delete this asset from the gallery?")) return;
     const prev = assets;
