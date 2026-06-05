@@ -68,18 +68,19 @@ export default function GalleryPage() {
       if (!id) return;
       if (!confirm("Delete this asset from the gallery?")) return;
       const prev = assets;
-      setAssets((cur) => cur.filter((a) => a.id !== id));
       setSelected(null);
       try {
         const res = await fetch(`/api/assets?id=${encodeURIComponent(id)}`, {
           method: "DELETE",
+          cache: "no-store",
         });
         if (!res.ok) throw new Error("Delete failed");
+        await refreshAssets();
       } catch {
         setAssets(prev);
       }
     },
-    [assets]
+    [assets, refreshAssets]
   );
 
   const handleDownload = useCallback(async () => {
