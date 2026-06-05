@@ -39,12 +39,12 @@ async function blobRead(): Promise<Asset[]> {
   try {
     const { list } = await import("@vercel/blob");
     const { blobs } = await list({ prefix: "" });
-    console.log("[assets-store] blob list returned", blobs.length, "blobs:", blobs.map((b: any) => b.pathname));
     const hit = blobs.find((b: any) => b.pathname === "assets.json");
-    console.log("[assets-store] assets.json hit:", hit ? "found" : "NOT FOUND", "url:", hit?.url);
     if (!hit?.url) return [];
-    const res = await fetch(hit.url);
-    console.log("[assets-store] fetch status:", res.status, "ok:", res.ok);
+    const res = await fetch(hit.url + "?t=" + Date.now(), {
+      next: { revalidate: 0 },
+      cache: "no-store",
+    });
     if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data) ? data : [];
@@ -61,7 +61,6 @@ async function blobWrite(items: Asset[]) {
     contentType: "application/json",
     allowOverwrite: true,
   });
-  console.log("[assets-store] blobWrite stored, url:", (await blobRead()).length, "assets");
 }
 
 export async function listAssets(): Promise<Asset[]> {
