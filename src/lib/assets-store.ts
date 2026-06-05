@@ -89,10 +89,8 @@ async function blobDeleteAsset(id: string) {
 }
 
 export async function listAssets(): Promise<Asset[]> {
-  if (USE_BLOB) {
-    return blobReadAll();
-  }
-  return localRead();
+  const items = USE_BLOB ? await blobReadAll() : localRead();
+  return items.sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
 }
 
 export async function saveAsset(input: {
