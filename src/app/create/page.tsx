@@ -25,20 +25,24 @@ export default function CreatePage() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState("");
+  const [connecting, setConnecting] = useState(false);
 
   useEffect(() => {
-    if (connected && account && step === "connect") {
+    if (connected && step === "connect") {
       setStep("prompt");
     }
-  }, [connected, account, step]);
+  }, [connected, step]);
 
   const handleConnect = useCallback(
     async (name: string) => {
       setError(null);
+      setConnecting(true);
       try {
         await connect(name);
       } catch {
         setError("Wallet connection was rejected.");
+      } finally {
+        setConnecting(false);
       }
     },
     [connect]
@@ -158,7 +162,6 @@ export default function CreatePage() {
           </Link>
         </div>
 
-        {/* ── Bước 1: Connect Wallet ── */}
         {step === "connect" && (
           <div className="text-center">
             <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-shelby-pink to-shelby-coral text-white shadow-xl shadow-shelby-pink/40">
@@ -227,7 +230,8 @@ export default function CreatePage() {
                       <button
                         key={w.name}
                         onClick={() => handleConnect(w.name)}
-                        className="flex w-full items-center gap-3 rounded-xl border border-shelby-border/60 bg-shelby-bg/50 px-4 py-3 text-left transition-colors hover:border-shelby-pink/40 hover:bg-shelby-pink-soft"
+                        disabled={connecting}
+                        className="flex w-full items-center gap-3 rounded-xl border border-shelby-border/60 bg-shelby-bg/50 px-4 py-3 text-left transition-colors hover:border-shelby-pink/40 hover:bg-shelby-pink-soft disabled:opacity-50"
                       >
                         {w.icon ? (
                           <img
@@ -245,7 +249,7 @@ export default function CreatePage() {
                             {w.name}
                           </p>
                           <p className="text-xs text-shelby-muted">
-                            Ready to connect
+                            {connecting ? "Connecting…" : "Ready to connect"}
                           </p>
                         </div>
                         <svg
@@ -270,7 +274,6 @@ export default function CreatePage() {
           </div>
         )}
 
-        {/* ── Bước 2: Prompt + Generate ── */}
         {step === "prompt" && (
           <div className="text-center">
             <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-shelby-pink to-shelby-coral text-white shadow-xl shadow-shelby-pink/40">
@@ -377,7 +380,6 @@ export default function CreatePage() {
           </div>
         )}
 
-        {/* ── Loading states ── */}
         {(step === "generating" || step === "storing") && (
           <div className="mx-auto mt-8 max-w-md rounded-2xl border border-shelby-border bg-white p-6 text-center shadow-sm">
             <div className="mx-auto mb-3 h-10 w-10 animate-spin rounded-full border-4 border-shelby-pink/20 border-t-shelby-pink" />
@@ -389,19 +391,16 @@ export default function CreatePage() {
             </p>
             {imageUrl && (
               <div className="mx-auto mt-4 overflow-hidden rounded-xl ring-1 ring-shelby-border/60">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={imageUrl} alt={prompt} className="w-full" />
               </div>
             )}
           </div>
         )}
 
-        {/* ── Done ── */}
         {step === "done" && (
           <div className="mx-auto mt-8 flex flex-col items-center gap-4">
             {imageUrl && (
               <div className="overflow-hidden rounded-2xl ring-1 ring-shelby-border/60 shadow-lg">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={imageUrl} alt={prompt} className="w-full max-w-md" />
               </div>
             )}
