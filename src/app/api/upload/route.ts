@@ -27,8 +27,9 @@ export async function POST(request: Request) {
       if (!privateKey) {
         throw new Error("SHELBY_ACCOUNT_PRIVATE_KEY not configured");
       }
-      const serverAccount = Account.fromPrivateKey({
-        privateKey: new Ed25519PrivateKey(privateKey),
+      const rawKey = privateKey.replace(/^ed25519-priv-/, "");
+const serverAccount = Account.fromPrivateKey({
+        privateKey: new Ed25519PrivateKey(rawKey),
       });
 
       const binaryString = Buffer.from(blobData, "base64");
