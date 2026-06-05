@@ -16,9 +16,11 @@ const MODEL_LABELS: Record<string, string> = {
   ideogram: "Ideogram",
   "playground-v2.5": "Playground v2.5",
   midjourney: "Midjourney",
-  sdxl: "Ideogram",
+  "stable-diffusion": "Stable Diffusion",
+  sdxl: "SDXL",
+  flux: "Flux",
   playground: "Playground v2.5",
-  "flux-schnell": "Midjourney",
+  "flux-schnell": "Flux",
 };
 
 export default function GalleryPage() {
