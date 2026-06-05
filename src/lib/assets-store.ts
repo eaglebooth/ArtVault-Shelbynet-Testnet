@@ -37,18 +37,16 @@ function localWrite(items: Asset[]) {
 
 async function blobRead(): Promise<Asset[]> {
   try {
-    const { list, get } = await import("@vercel/blob");
+    const { list } = await import("@vercel/blob");
     const { blobs } = await list({ prefix: "" });
     const hit = blobs.find((b: any) => b.pathname === "assets.json");
-    if (!hit?.pathname) return [];
-    const result = await get(hit.pathname);
-    const text =
-      typeof result === "string"
-        ? result
-        : result instanceof ReadableStream
-          ? await new Response(result).text()
-          : await result.text();
-    return JSON.parse(text);
+    if (!hit?.url) return [];
+    const res = await fetch(hit.url, {
+      headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+      next: { revalidate: 0 },
+    });
+    if (!res.ok) return [];
+    return await res.json();
   } catch (err) {
     console.error("[assets-store] blobRead failed:", err);
     return [];
