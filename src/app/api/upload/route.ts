@@ -1,24 +1,14 @@
 import { NextResponse } from "next/server";
-import { getShelbyClient } from "@/lib/shelby";
+import { getShelbyClient, getAccountAddress, DEFAULT_EXPIRATION_MICROS } from "@/lib/shelby";
+import { Account, Ed25519PrivateKey } from "@aptos-labs/ts-sdk";
 
 export const runtime = "nodejs";
+export const maxDuration = 120;
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const {
-      account,
-      blobName,
-      blobData,
-      totalBytes,
-      imageUrl,
-    }: {
-      account?: string;
-      blobName: string;
-      blobData: string;
-      totalBytes?: number;
-      imageUrl?: string;
-    } = body;
+    const { account, blobName, blobData, totalBytes, imageUrl, prompt, model } = body;
 
     if (!blobData || !blobName) {
       return NextResponse.json(
@@ -31,31 +21,37 @@ export async function POST(request: Request) {
     let shelbyError: string | null = null;
     let txDigest: string | null = null;
 
-    // Try real Shelby upload if account is provided
-    if (account && blobData) {
-      try {
-        const client = getShelbyClient();
-
-        const binaryString = Buffer.from(blobData, "base64");
-        const uint8 = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          uint8[i] = binaryString[i];
-        }
-
-        await (client as any).putBlob?.({
-          account,
-          blobName,
-          blobData: uint8,
-          totalBytes: totalBytes ?? uint8.length,
-        });
-
-        shelbyOk = true;
-        txDigest = `shelby://${blobName}`;
-      } catch (err) {
-        console.warn("[api/upload] Shelby upload failed, falling back to local:", err);
-        shelbyError = err instanceof Error ? err.message : String(err);
-        shelbyOk = false;
+    try {
+      const client = getShelbyClient();
+      const privateKey = process.env.SHELBY_ACCOUNT_PRIVATE_KEY;
+      if (!privateKey) {
+        throw new Error("SHELBY_ACCOUNT_PRIVATE_KEY not configured");
       }
+      const serverAccount = Account.fromPrivateKey({
+        privateKey: new Ed25519PrivateKey(privateKey),
+      });
+
+      const binaryString = Buffer.from(blobData, "base64");
+      const uint8 = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        uint8[i] = binaryString[i];
+      }
+
+      const expirationMicros = Date.now() + DEFAULT_EXPIRATION_MICROS;
+
+      await client.upload({
+        blobData: uint8,
+        signer: serverAccount,
+        blobName,
+        expirationMicros,
+      });
+
+      shelbyOk = true;
+      txDigest = `shelby://${blobName}`;
+    } catch (err) {
+      console.warn("[api/upload] Shelby upload failed:", err);
+      shelbyError = err instanceof Error ? err.message : String(err);
+      shelbyOk = false;
     }
 
     return NextResponse.json({

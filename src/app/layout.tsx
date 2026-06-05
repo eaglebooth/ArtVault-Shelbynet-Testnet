@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { Providers } from "./providers";
+import ClientProviders from "./client-providers";
 import Navbar from "@/components/Navbar";
 import "./globals.css";
 
@@ -33,10 +33,10 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-shelby-bg text-shelby-dark">
-        <Providers>
+        <ClientProviders>
           <Navbar />
           {children}
-        </Providers>
+        </ClientProviders>
       </body>
     </html>
   );

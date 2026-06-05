@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { listAssets, saveAsset, deleteAsset } from "@/lib/assets-store";
+import type { Asset } from "@/lib/assets-store";
 
 export const runtime = "nodejs";
-
 export async function GET() {
   try {
     const assets = await listAssets();
@@ -16,14 +16,32 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { imageUrl, prompt, model } = body ?? {};
-    if (!imageUrl || !prompt || !model) {
+    const {
+      imageUrl,
+      prompt,
+      model,
+      blobName,
+      txDigest,
+      shelbyOk,
+      account,
+    }: Partial<Asset> & { imageUrl?: string } = body ?? {};
+
+    if (!prompt || !model) {
       return NextResponse.json(
-        { error: "imageUrl, prompt, and model are required" },
+        { error: "prompt and model are required" },
         { status: 400 }
       );
     }
-    const asset = await saveAsset({ imageUrl, prompt, model });
+
+    const asset = await saveAsset({
+      prompt,
+      model,
+      blobName: blobName ?? "",
+      txDigest: txDigest ?? null,
+      shelbyOk: shelbyOk ?? false,
+      account: account ?? null,
+    });
+
     return NextResponse.json({ asset });
   } catch (error) {
     console.error("[/api/assets] error:", error);
@@ -39,14 +57,19 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     if (!id) {
-      return NextResponse.json({ error: "id query param is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "id query param is required" },
+        { status: 400 }
+      );
     }
     const ok = await deleteAsset(id);
     return NextResponse.json({ ok });
   } catch (error) {
     console.error("[/api/assets DELETE] error:", error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Failed to delete asset" },
+      {
+        error: error instanceof Error ? error.message : "Failed to delete asset",
+      },
       { status: 500 }
     );
   }

@@ -1,15 +1,18 @@
 "use client";
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 type Asset = {
   id: string;
-  imageUrl: string;
   prompt: string;
   model: string;
-  createdAt: string;
+  imageUrl: string;
+  txDigest: string | null;
+  blobName: string;
+  shelbyOk: boolean;
+  account: string | null;
+  storedAt: string;
 };
 
 const MODEL_LABELS: Record<string, string> = {
@@ -22,6 +25,19 @@ const MODEL_LABELS: Record<string, string> = {
   playground: "Playground v2.5",
   "flux-schnell": "Flux",
 };
+
+function getLocalAssets(): Asset[] {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem("shelby-vault:assets") ?? "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveLocalAssets(assets: Asset[]) {
+  localStorage.setItem("shelby-vault:assets", JSON.stringify(assets));
+}
 
 export default function GalleryPage() {
   const pathname = usePathname();
@@ -41,10 +57,11 @@ export default function GalleryPage() {
     try {
       const res = await fetch("/api/assets", { cache: "no-store" });
       const data = await res.json();
-      if (!cancelledRef.current)
+      if (!cancelledRef.current) {
         setAssets(Array.isArray(data.assets) ? data.assets : []);
+      }
     } catch {
-      if (!cancelledRef.current) setAssets([]);
+      if (!cancelledRef.current) setAssets(getLocalAssets());
     } finally {
       refreshing.current = false;
       if (!cancelledRef.current) setLoading(false);
@@ -74,11 +91,10 @@ export default function GalleryPage() {
       setAssets((cur) => cur.filter((a) => a.id !== id));
       setSelected(null);
       try {
-        const res = await fetch(`/api/assets?id=${encodeURIComponent(id)}`, {
-          method: "DELETE",
-          cache: "no-store",
-          next: { revalidate: 0 },
-        });
+        const res = await fetch(
+          `/api/assets?id=${encodeURIComponent(id)}`,
+          { method: "DELETE", cache: "no-store", next: { revalidate: 0 } }
+        );
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
           throw new Error(err.error ?? "Delete failed");
@@ -86,7 +102,7 @@ export default function GalleryPage() {
       } catch (e) {
         console.error("delete failed:", e);
         alert(
-          e instanceof Error ? e.message : "Delete failed, please refresh the page"
+          e instanceof Error ? e.message : "Delete failed, please refresh"
         );
       }
     },
@@ -94,23 +110,33 @@ export default function GalleryPage() {
   );
 
   const handleDownload = useCallback(async () => {
-    if (!selected?.imageUrl) return;
-    const res = await fetch(selected.imageUrl);
-    const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download =
-      selected.prompt.replace(/[^a-z0-9_-]/gi, "_").slice(0, 60) ||
-      "vault-asset";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    if (!selected?.blobName) return;
+    try {
+      const res = await fetch(
+        `/api/download?blobName=${encodeURIComponent(selected.blobName)}`
+      );
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = selected.blobName.split("/").pop() ?? "vault-asset";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("download failed:", err);
+      alert(
+        err instanceof Error ? err.message : "Download failed"
+      );
+    }
   }, [selected]);
 
   const filtered =
-    filter === "all" ? assets : assets.filter((a) => a.model === filter);
+    filter === "all"
+      ? assets
+      : assets.filter((a) => a.model === filter);
   const models = Array.from(new Set(assets.map((a) => a.model)));
 
   return (
@@ -185,22 +211,48 @@ export default function GalleryPage() {
                     : "ring-shelby-border/60"
                 }`}
               >
-                <div className="aspect-[4/3] bg-shelby-bg">
-                  <img
-                    src={a.imageUrl}
-                    alt={a.prompt}
-                    className="h-full w-full object-cover"
-                  />
+                <div className="aspect-[4/3] bg-shelby-bg relative flex items-center justify-center">
+                  {a.imageUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={a.imageUrl}
+                      alt={a.prompt}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 p-4 text-center">
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        className="h-10 w-10 text-shelby-pink/40"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M20.25 6.375c0 2.278-3.694 4.125-8.25 4.125S3.75 8.653 3.75 6.375m16.5 0c0-2.278-3.694-4.125-8.25-4.125S3.75 4.097 3.75 6.375m16.5 0v11.25c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125V6.375m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.556 18 12 18s-8.25-1.847-8.25-4.125v-3.75m16.5 0c0 2.278-3.694 4.125-8.25 4.125s-8.25-1.847-8.25-4.125"
+                        />
+                      </svg>
+                      <p className="text-xs text-shelby-muted line-clamp-2 font-mono">
+                        {a.blobName}
+                      </p>
+                    </div>
+                  )}
                 </div>
                 <div className="p-4">
-                  <p className="text-sm font-medium text-shelby-dark line-clamp-2">
-                    {a.prompt}
-                  </p>
+                  {a.prompt && (
+                    <p className="text-sm font-medium text-shelby-dark line-clamp-2">
+                      {a.prompt}
+                    </p>
+                  )}
                   <div className="mt-2 flex items-center justify-between">
                     <span className="rounded-full bg-shelby-pink-soft px-2.5 py-0.5 text-xs font-semibold text-shelby-pink">
                       {modelLabel(a.model)}
                     </span>
-                    <span className="text-xs text-emerald-600">Saved</span>
+                    <span className="text-xs text-emerald-600">
+                      {a.shelbyOk ? "On Shelby" : "Demo"}
+                    </span>
                   </div>
                 </div>
               </button>
@@ -212,50 +264,52 @@ export default function GalleryPage() {
           <div className="mt-8 rounded-2xl border border-shelby-border/60 bg-white p-5 shadow-sm">
             <div className="flex flex-col gap-5 sm:flex-row">
               <div className="sm:w-72 lg:w-96 shrink-0">
-                <img
-                  src={selected.imageUrl}
-                  alt={selected.prompt}
-                  className="w-full rounded-xl"
-                />
+                {selected.imageUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={selected.imageUrl}
+                    alt={selected.prompt}
+                    className="w-full rounded-xl"
+                  />
+                ) : (
+                  <div className="flex h-full min-h-48 items-center justify-center rounded-xl bg-shelby-bg">
+                    <p className="text-xs text-shelby-muted font-mono line-clamp-3 p-4 text-center">
+                      {selected.blobName}
+                    </p>
+                  </div>
+                )}
               </div>
               <div className="flex-1 space-y-2">
-                <p className="text-lg font-semibold text-shelby-dark line-clamp-3">
-                  {selected.prompt}
-                </p>
+                {selected.prompt && (
+                  <p className="text-lg font-semibold text-shelby-dark line-clamp-3">
+                    {selected.prompt}
+                  </p>
+                )}
                 <p className="text-sm text-shelby-muted">
                   Model: {modelLabel(selected.model)} · Created{" "}
-                  {new Date(selected.createdAt).toLocaleString()}
+                  {new Date(selected.storedAt).toLocaleString()}
                 </p>
                 <p className="text-xs text-shelby-muted">
                   Asset ID: {selected.id}
                 </p>
-                <button
-                  onClick={() => handleDelete(selected.id)}
-                  className="mt-3 rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100"
-                >
-                  Delete
-                </button>
-
-                <button
-                  onClick={handleDownload}
-                  className="mt-3 ml-2 inline-flex items-center gap-1 rounded-full border border-shelby-border bg-white px-4 py-2 text-xs font-semibold text-shelby-dark transition-colors hover:bg-shelby-bg disabled:opacity-50"
-                  disabled={!selected.imageUrl}
-                >
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className="h-3.5 w-3.5"
+                <p className="text-xs font-mono text-shelby-muted break-all">
+                  Blob: {selected.blobName}
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <button
+                    onClick={handleDownload}
+                    disabled={!selected.blobName}
+                    className="rounded-full border border-shelby-border bg-white px-4 py-2 text-xs font-semibold text-shelby-dark transition-colors hover:bg-shelby-bg disabled:opacity-50"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"
-                    />
-                  </svg>
-                  Download
-                </button>
+                    Download from Shelby
+                  </button>
+                  <button
+                    onClick={() => handleDelete(selected.id)}
+                    className="rounded-full border border-red-200 bg-red-50 px-4 py-2 text-xs font-semibold text-red-600 transition-colors hover:bg-red-100"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </div>
           </div>
